@@ -1,0 +1,5 @@
+# Never commit real secrets to GitHub
+.env
+.env.local
+.env.production
+node_modules/

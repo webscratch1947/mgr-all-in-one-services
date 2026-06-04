@@ -1,0 +1,10 @@
+{
+  "name": "mgr-all-in-one-services",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "razorpay": "^2.9.2"
+  }
+}

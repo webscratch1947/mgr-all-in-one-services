@@ -1,1 +1,1 @@
-# mgr-all-in-one-services
+# MGR ALL IN ONE SERVICES

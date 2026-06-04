@@ -1,0 +1,14 @@
+{
+  "buildCommand": "node build.js",
+  "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/api-payment",
+      "destination": "/api/payment"
+    },
+    {
+      "source": "/api-verify-payment",
+      "destination": "/api/verify-payment"
+    }
+  ]
+}
