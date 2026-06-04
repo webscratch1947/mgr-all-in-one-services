@@ -1246,8 +1246,27 @@ body.in-dashboard #mob-sidebar-overlay { display:none !important; }
         <div class="input-group"><label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" onkeydown="if(event.key==='Enter')login()"/></div>
         <div class="input-group"><label>Password</label><div style="position:relative;"><input type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()" style="width:100%;padding-right:44px;"/><button type="button" onclick="togglePwd('loginPassword',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8a93a6;padding:4px;display:flex;align-items:center;">👁</button></div></div>
         <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:8px;" id="loginBtnSubmit" onclick="login()">Sign in</button>
+        <div style="text-align:center;margin-top:12px;">
+          <button type="button" onclick="showForgotPanel()" style="background:none;border:none;cursor:pointer;font-size:13px;color:#e63946;text-decoration:underline;font-family:inherit;padding:0;">Forgot password?</button>
+        </div>
         <div class="auth-footer">New here? <button type="button" onclick="setAuthMode('signup')">Switch to create account</button></div>
       </div>
+
+      <!-- FORGOT PASSWORD PANEL -->
+      <div id="websiteForgotPanel" style="display:none;">
+        <h2 class="auth-title">Reset password</h2>
+        <p class="auth-sub" style="margin-bottom:20px;">Enter your account email and we'll send you a reset link.</p>
+        <div class="input-group">
+          <label>Email</label>
+          <input type="email" id="websiteForgotEmail" placeholder="you@example.com" autocomplete="email" onkeydown="if(event.key==='Enter')sendWebsiteResetLink()"/>
+        </div>
+        <div id="websiteForgotMsg" style="display:none;font-size:13px;padding:10px 14px;border-radius:8px;margin-bottom:12px;"></div>
+        <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;" id="websiteForgotSubmit" onclick="sendWebsiteResetLink()">Send reset link</button>
+        <div style="text-align:center;margin-top:14px;">
+          <button type="button" onclick="hideForgotPanel()" style="background:none;border:none;cursor:pointer;font-size:13px;color:#e63946;text-decoration:underline;font-family:inherit;padding:0;">← Back to sign in</button>
+        </div>
+      </div>
+
       <div id="signupForm" style="display:none;">
         <h2 class="auth-title">Create your account</h2>
         <p class="auth-sub">One account for booking services, tracking visits, and vendor tools if you join as a pro.</p>
@@ -2852,6 +2871,64 @@ function setAuthMode(mode) {
   document.getElementById('signupForm').style.display = mode === 'signup' ? 'block' : 'none';
   document.getElementById('authTabLogin')?.classList.toggle('active', mode === 'login');
   document.getElementById('authTabSignup')?.classList.toggle('active', mode === 'signup');
+  // Hide forgot panel when switching tabs
+  var fp = document.getElementById('websiteForgotPanel');
+  if (fp) fp.style.display = 'none';
+}
+
+function showForgotPanel() {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('websiteForgotPanel').style.display = 'block';
+  var email = document.getElementById('loginEmail').value.trim();
+  if (email) document.getElementById('websiteForgotEmail').value = email;
+  var msg = document.getElementById('websiteForgotMsg');
+  msg.style.display = 'none';
+}
+
+function hideForgotPanel() {
+  document.getElementById('websiteForgotPanel').style.display = 'none';
+  document.getElementById('loginForm').style.display = 'block';
+}
+
+async function sendWebsiteResetLink() {
+  var cfg = window.__MGR_CFG__ || {};
+  if (!cfg.url || !cfg.anon) { return; }
+  var c = supabase.createClient(cfg.url, cfg.anon);
+  var email = document.getElementById('websiteForgotEmail').value.trim();
+  var msgEl = document.getElementById('websiteForgotMsg');
+
+  function showMsg(text, isErr) {
+    msgEl.textContent = text;
+    msgEl.style.background = isErr ? '#fff0f1' : '#f0fff4';
+    msgEl.style.color = isErr ? '#c0392b' : '#22863a';
+    msgEl.style.border = isErr ? '1px solid #f5c6cb' : '1px solid #b7ebc5';
+    msgEl.style.display = 'block';
+  }
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return showMsg('Please enter a valid email address.', true);
+  }
+
+  var btn = document.getElementById('websiteForgotSubmit');
+  btn.textContent = 'Sending…';
+  btn.disabled = true;
+
+  try {
+    var check = await c.from('users').select('id').eq('email', email).maybeSingle();
+    if (!check.data) {
+      btn.textContent = 'Send reset link'; btn.disabled = false;
+      return showMsg('No account found with this email.', true);
+    }
+    var res = await c.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://mgrallinoneservices.com/forgetpassword.html'
+    });
+    btn.textContent = 'Send reset link'; btn.disabled = false;
+    if (res.error) return showMsg(res.error.message || 'Something went wrong.', true);
+    showMsg('✅ Reset link sent! Check your inbox (and spam folder).', false);
+  } catch (e) {
+    btn.textContent = 'Send reset link'; btn.disabled = false;
+    showMsg('Something went wrong. Please try again.', true);
+  }
 }
 
 // ===================== PAGES =====================
