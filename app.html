@@ -1880,7 +1880,7 @@ const SERVICES = [
   {id:1,  name:'Home Deep Cleaning',       cat:'Cleaning',     img:'https://images.pexels.com/photos/4108715/pexels-photo-4108715.jpeg?auto=compress&cs=tinysrgb&w=400',  price:99,  rating:4.9, desc:'Full home deep cleaning by professionals with eco-friendly products', badge:'Bestseller'},
 
   // APPLIANCES
-  {id:2,  name:'AC Service & Repair',      cat:'Appliances',   img:'https://images.pexels.com/photos/5463575/pexels-photo-5463575.jpeg?auto=compress&cs=tinysrgb&w=400',  price:5,   rating:4.9, desc:'Complete AC servicing, gas refilling, and repair', badge:'Popular'},
+  {id:2,  name:'AC Service & Repair',      cat:'Appliances',   img:'https://images.pexels.com/photos/5463575/pexels-photo-5463575.jpeg?auto=compress&cs=tinysrgb&w=400',  price:0,   rating:4.9, desc:'Complete AC servicing, gas refilling, and repair', badge:'FREE'},
   {id:3,  name:'Refrigerator Repair',      cat:'Appliances',   img:'https://images.pexels.com/photos/9551373/pexels-photo-9551373.jpeg?auto=compress&cs=tinysrgb&w=400',  price:99,  rating:4.8, desc:'Expert fridge repair for all brands — cooling, compressor, gas'},
   {id:4,  name:'Washing Machine Repair',   cat:'Appliances',   img:'https://images.pexels.com/photos/5591581/pexels-photo-5591581.jpeg?auto=compress&cs=tinysrgb&w=400',  price:99,  rating:4.7, desc:'Front load and top load washing machine repair'},
   {id:5,  name:'Microwave Repair',         cat:'Appliances',   img:'https://images.pexels.com/photos/32168944/pexels-photo-32168944.jpeg?_gl=1*bklc4x*_ga*MTYyMjIzNTQ3NC4xNzc1OTc1NjMx*_ga_8JE65Q40S6*czE3NzY1Nzg2NTEkbzMkZzEkdDE3NzY1Nzg2OTkkajEyJGwwJGgw',  price:99,  rating:4.6, desc:'Microwave oven repair and servicing for all brands'},
@@ -3010,7 +3010,7 @@ function serviceCardHTML(s) {
       <div class="service-card-name">${s.name}</div>
       <div class="service-card-desc">${s.desc}</div>
       <div class="service-card-foot">
-        <div><div class="service-price">₹${s.price}</div><div class="service-price-label">Platform fee · Final price after visit</div></div>
+        <div><div class="service-price">${s.price === 0 ? 'FREE' : '₹'+s.price}</div><div class="service-price-label">${s.price === 0 ? 'No platform fee' : 'Platform fee · Final price after visit'}</div></div>
         <div class="service-rating"><span class="star">★</span>${s.rating}</div>
       </div>
     </div>
@@ -3023,7 +3023,7 @@ function openBookingModal(serviceId) {
   selectedService = SERVICES.find(s => s.id === serviceId);
   if (!selectedService) return;
   document.getElementById('bookingServiceName').textContent = selectedService.name;
-  document.getElementById('bookingServicePrice').textContent = `₹${selectedService.price} (Platform Fee Only)`;
+  document.getElementById('bookingServicePrice').textContent = selectedService.price === 0 ? 'FREE (No Platform Fee)' : `₹${selectedService.price} (Platform Fee Only)`;
   document.getElementById('bookingServiceImg').src = selectedService.img;
   const pn = document.getElementById('bookingPriceNote'); if(pn) pn.style.display='block';
   document.getElementById('bookingDate').value = '';
@@ -3067,6 +3067,30 @@ async function confirmBooking() {
   if (!userId) { showToast('Unable to identify user. Please re-login.','error'); return; }
 
   btn.innerHTML = '<div class="loader"></div> Processing...'; btn.disabled = true;
+
+  // FREE SERVICE — skip Razorpay entirely
+  if (!selectedService.price || selectedService.price === 0) {
+    const { error } = await db.from('bookings').insert({
+      user_id: userId,
+      service_name: selectedService.name,
+      service_category: selectedService.cat,
+      service_price: 0,
+      service_image: selectedService.img,
+      booking_date: date,
+      booking_time: time,
+      address,
+      notes: document.getElementById('bookingNotes').value,
+      status: 'pending',
+      payment_id: null,
+      payment_status: 'paid'
+    });
+    btn.innerHTML = 'Confirm Booking'; btn.disabled = false;
+    if (error) { showToast('Booking save failed: ' + error.message, 'error'); return; }
+    closeModal('bookingModal');
+    showToast('Booking confirmed ✓ (Free Service)', 'success');
+    if (document.getElementById('userDashboard').classList.contains('active')) loadUserDashboard();
+    return;
+  }
 
   // STEP 1: Create Razorpay order on backend
   let order;
