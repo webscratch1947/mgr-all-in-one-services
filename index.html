@@ -1921,6 +1921,7 @@ function initSupabase() {
 // ===================== DB HEALTH CHECK =====================
 // Runs once on load — alerts admin if tables are missing (common when SQL not run)
 async function checkDbHealth() {
+  if (!db && !initSupabase()) return;
   const { error } = await db.from('vendors').select('id').limit(1);
   if (error && error.message && error.message.includes('does not exist')) {
     const banner = document.createElement('div');
@@ -1933,7 +1934,7 @@ window.addEventListener('load', checkDbHealth);
 
 // ===================== SERVICES DATA =====================
 // Images below are verified via visual image search before being added
-const SERVICES = [
+let SERVICES = [
   // CLEANING
   {id:1,  name:'Home Deep Cleaning',       cat:'Cleaning',     img:'https://images.pexels.com/photos/4108715/pexels-photo-4108715.jpeg?auto=compress&cs=tinysrgb&w=400',  price:99,  rating:4.9, desc:'Full home deep cleaning by professionals with eco-friendly products', badge:'Bestseller'},
 
@@ -1978,8 +1979,56 @@ const SERVICES = [
   {id:27, name:'Home Shifting',            cat:'Shifting',     img:'https://images.pexels.com/photos/4246120/pexels-photo-4246120.jpeg?auto=compress&cs=tinysrgb&w=400',  price:99, rating:4.8, desc:'Complete home shifting with packing, loading and moving'},
 ];
 
-const CATEGORIES = [...new Set(SERVICES.map(s=>s.cat))];
+let CATEGORIES = [...new Set(SERVICES.map(s=>s.cat))];
 const SKILLS_OPTIONS = ['Cleaning','AC Repair','Appliance Repair','Plumbing','Electrical','Beauty & Wellness','Painting','Pest Control','Carpentry','Home Shifting','General Maintenance'];
+
+function servicePrice(s) {
+  const price = Number(s?.price ?? s?.service_price ?? 99);
+  return Number.isFinite(price) && price >= 0 ? price : 99;
+}
+
+function normalizeService(s) {
+  return {
+    id: Number(s.id),
+    name: s.name || 'Service',
+    cat: s.cat || s.category || s.service_category || 'Services',
+    img: s.img || s.image_url || s.service_image || '',
+    price: servicePrice(s),
+    rating: Number(s.rating || 4.8),
+    desc: s.desc || s.description || '',
+    badge: s.badge || ''
+  };
+}
+
+function rebuildCatalogMeta() {
+  SERVICES = SERVICES.map(normalizeService);
+  CATEGORIES = [...new Set(SERVICES.map(s => s.cat).filter(Boolean))];
+}
+
+async function loadServiceCatalog() {
+  if (!db) {
+    rebuildCatalogMeta();
+    return false;
+  }
+  try {
+    const { data, error } = await db
+      .from('services')
+      .select('id,name,category,image_url,price,rating,description,badge,sort_order,is_active')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
+    if (!error && Array.isArray(data) && data.length) {
+      SERVICES = data.map(normalizeService);
+      rebuildCatalogMeta();
+      return true;
+    }
+    if (error && error.code !== '42P01') console.warn('MGR: service catalog sync failed:', error.message || error);
+  } catch (err) {
+    console.warn('MGR: service catalog sync failed:', err);
+  }
+  rebuildCatalogMeta();
+  return false;
+}
 
 // ===================== GLOBAL STATE =====================
 let currentUser = null;
@@ -2004,8 +2053,6 @@ let accountDeletedLocked = false;
 // ===================== INIT =====================
 window.addEventListener('load', async () => {
   setLogos();
-  buildLandingServices();
-  buildVendorRegSkills();
   setMinBookingDate();
 
   // Wait up to 3 seconds for _config.js to load, then init Supabase
@@ -2022,6 +2069,13 @@ window.addEventListener('load', async () => {
       }
     }, 100);
   });
+
+  await loadServiceCatalog();
+  buildLandingServices();
+  buildVendorRegSkills();
+  setInterval(() => {
+    loadServiceCatalog().then(() => buildLandingServices(dashCatFilter || 'All'));
+  }, 5 * 60 * 1000);
 
   // Keep the page loader showing until auth check completes (max 5s safety timeout)
   await Promise.race([
@@ -3007,7 +3061,7 @@ function formatReviewCount(n) {
 }
 function buildLandingServices(filter = 'All', search = '') {
   const catBtns = document.getElementById('catFilters');
-  if (catBtns && !catBtns.children.length) {
+  if (catBtns) {
     catBtns.innerHTML = `<button class="cat-btn active" onclick="buildLandingServices('All')">All</button>` +
       CATEGORIES.map(c => `<button class="cat-btn" onclick="buildLandingServices('${c}')">${c}</button>`).join('');
   }
