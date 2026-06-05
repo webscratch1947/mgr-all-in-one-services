@@ -1868,12 +1868,13 @@ body.in-dashboard #mob-sidebar-overlay { display:none !important; }
 <div id="accountDeletedLock" style="display:none;position:fixed;inset:0;z-index:5000;background:linear-gradient(135deg,#0f172a,#1e293b);align-items:center;justify-content:center;padding:20px;">
   <div style="max-width:520px;width:100%;background:#fff;border-radius:20px;padding:32px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.35);">
     <div style="font-size:46px;margin-bottom:12px;">🚫</div>
-    <h2 style="font-family:'Poppins';font-weight:800;font-size:24px;color:#0f172a;margin-bottom:8px;">Account Deleted</h2>
-    <p id="accountDeletedLockText" style="font-size:14px;color:#475569;line-height:1.7;margin-bottom:18px;">Your account was deleted or permanently blocked.</p>
+    <h2 style="font-family:'Poppins';font-weight:800;font-size:24px;color:#0f172a;margin-bottom:8px;">Account Banned</h2>
+    <p id="accountDeletedLockText" style="font-size:14px;color:#475569;line-height:1.7;margin-bottom:18px;">Your account has been permanently banned by admin. You cannot access this service.</p>
     <div style="background:#fef3c7;border-radius:10px;padding:10px 14px;margin-bottom:18px;">
       <p style="font-size:12px;color:#92400e;font-weight:600;">You cannot use this website with this session.</p>
     </div>
-    <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="logout()">Logout</button>
+    <a href="mailto:mgrallinoneservices@gmail.com?subject=Account%20Ban%20Appeal&body=Hello%2C%0A%0AI%20would%20like%20to%20appeal%20my%20account%20ban.%0A%0AEmail%3A%20%0AReason%3A%20" style="display:block;width:100%;box-sizing:border-box;background:#e63946;color:#fff;font-family:'Poppins';font-weight:700;font-size:15px;padding:14px;border-radius:12px;text-decoration:none;margin-bottom:10px;">✉️ Appeal Ban — mgrallinoneservices@gmail.com</a>
+    <button class="btn btn-outline" style="width:100%;justify-content:center;" onclick="logout()">Logout</button>
   </div>
 </div>
 
@@ -2425,7 +2426,7 @@ function startSessionGuard() {
       accountDeletedLocked = true;
       const lock = document.getElementById('accountDeletedLock');
       const txt = document.getElementById('accountDeletedLockText');
-      if (txt) txt.textContent = 'Account removed/blocked by admin. Logout required.';
+      if (txt) txt.textContent = 'Your account has been permanently banned by admin. You cannot access this service.';
       if (lock) lock.style.display = 'flex';
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       return;
@@ -2433,22 +2434,20 @@ function startSessionGuard() {
     const { data, error } = await db.from('users').select('id,is_banned').eq('auth_id', currentUser.id).maybeSingle();
     if (error) return;
     if (!data) {
-      // Missing profile row can happen in fresh project. Auto-heal.
-      const name = currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'User';
-      await db.from('users').insert({
-        auth_id: currentUser.id,
-        email: currentUser.email,
-        full_name: name,
-        role: 'user',
-        is_banned: false
-      });
+      // User row deleted from Supabase — show ban screen
+      accountDeletedLocked = true;
+      const lock = document.getElementById('accountDeletedLock');
+      const txt = document.getElementById('accountDeletedLockText');
+      if (txt) txt.textContent = 'Your account has been removed or banned by admin. You cannot access this service.';
+      if (lock) lock.style.display = 'flex';
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       return;
     }
     if (data.is_banned) {
       accountDeletedLocked = true;
       const lock = document.getElementById('accountDeletedLock');
       const txt = document.getElementById('accountDeletedLockText');
-      if (txt) txt.textContent = 'Account removed/blocked. Logout required.';
+      if (txt) txt.textContent = 'Your account has been permanently banned by admin. You cannot access this service.';
       if (lock) lock.style.display = 'flex';
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     }
