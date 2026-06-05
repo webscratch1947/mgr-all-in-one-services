@@ -1939,7 +1939,7 @@ let SERVICES = [
   {id:1,  name:'Home Deep Cleaning',       cat:'Cleaning',     img:'https://images.pexels.com/photos/4108715/pexels-photo-4108715.jpeg?auto=compress&cs=tinysrgb&w=400',  price:99,  rating:4.9, desc:'Full home deep cleaning by professionals with eco-friendly products', badge:'Bestseller'},
 
   // APPLIANCES
-  {id:2,  name:'AC Service & Repair',      cat:'Appliances',   img:'https://images.pexels.com/photos/5463575/pexels-photo-5463575.jpeg?auto=compress&cs=tinysrgb&w=400',  price:0,   rating:4.9, desc:'Complete AC servicing, gas refilling, and repair', badge:'Popular'},
+  {id:2,  name:'AC Service & Repair',      cat:'Appliances',   img:'https://images.pexels.com/photos/5463575/pexels-photo-5463575.jpeg?auto=compress&cs=tinysrgb&w=400',  price:99,  rating:4.9, desc:'Complete AC servicing, gas refilling, and repair', badge:'Popular'},
   {id:3,  name:'Refrigerator Repair',      cat:'Appliances',   img:'https://images.pexels.com/photos/9551373/pexels-photo-9551373.jpeg?auto=compress&cs=tinysrgb&w=400',  price:99,  rating:4.8, desc:'Expert fridge repair for all brands — cooling, compressor, gas'},
   {id:4,  name:'Washing Machine Repair',   cat:'Appliances',   img:'https://images.pexels.com/photos/5591581/pexels-photo-5591581.jpeg?auto=compress&cs=tinysrgb&w=400',  price:99,  rating:4.7, desc:'Front load and top load washing machine repair'},
   {id:5,  name:'Microwave Repair',         cat:'Appliances',   img:'https://images.pexels.com/photos/32168944/pexels-photo-32168944.jpeg?_gl=1*bklc4x*_ga*MTYyMjIzNTQ3NC4xNzc1OTc1NjMx*_ga_8JE65Q40S6*czE3NzY1Nzg2NTEkbzMkZzEkdDE3NzY1Nzg2OTkkajEyJGwwJGgw',  price:99,  rating:4.6, desc:'Microwave oven repair and servicing for all brands'},
@@ -1983,7 +1983,6 @@ let CATEGORIES = [...new Set(SERVICES.map(s=>s.cat))];
 const SKILLS_OPTIONS = ['Cleaning','AC Repair','Appliance Repair','Plumbing','Electrical','Beauty & Wellness','Painting','Pest Control','Carpentry','Home Shifting','General Maintenance'];
 
 function servicePrice(s) {
-  if (s && (s.name === 'AC Service & Repair' || s.service_name === 'AC Service & Repair')) return 0;
   const price = Number(s?.price ?? s?.service_price ?? 99);
   return Number.isFinite(price) && price >= 0 ? price : 99;
 }
@@ -3232,7 +3231,7 @@ async function confirmBooking() {
 
   // FREE service — skip Razorpay entirely
   if (selectedService.price === 0) {
-    const { error: freeErr } = await db.from('bookings').insert({
+    const { error } = await db.from('bookings').insert({
       user_id: userId,
       service_name: selectedService.name,
       service_category: selectedService.cat,
@@ -3247,7 +3246,7 @@ async function confirmBooking() {
       payment_status: 'free'
     });
     btn.innerHTML = 'Confirm Booking'; btn.disabled = false;
-    if (freeErr) { showToast('Booking save failed: ' + freeErr.message, 'error'); return; }
+    if (error) { showToast('Booking save failed: ' + error.message, 'error'); return; }
     closeModal('bookingModal');
     showToast('Booking confirmed! ✓', 'success');
     if (document.getElementById('userDashboard').classList.contains('active')) loadUserDashboard();
@@ -3705,7 +3704,7 @@ async function loadVendorJobs() {
       const pendingJobs = allVendorJobs.filter(j => j.status === 'pending' || j.status === 'assigned').length;
       const completedJobs = allVendorJobs.filter(j => j.status === 'completed').length;
       const ratedJobs = allVendorJobs.filter(j => j.rating);
-      const avgRating = ratedJobs.length ? (ratedJobs.reduce((s,j)=>s+(j.rating||0),0)/ratedJobs.length).toFixed(1) : (vendor.rating != null ? vendor.rating : '—');
+      const avgRating = ratedJobs.length ? (ratedJobs.reduce((s,j)=>s+(j.rating||0),0)/ratedJobs.length).toFixed(1) : '—';
       const wn = document.getElementById('vendorWelcomeName');
       if (wn) wn.textContent = vendor.full_name?.split(' ')[0] || 'Vendor';
       const vs = document.getElementById('vendorStatTotal'); if(vs) vs.textContent = totalJobs;
